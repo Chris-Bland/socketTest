@@ -1,0 +1,26 @@
+{
+  "name": "crypto-server",
+  "version": "1.0.0",
+  "description": "Private Server",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "watchify main.js -o bundle.js -t [ bubleify ]"
+  },
+  "author": "Chris Bland",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "browserify": "^14.4.0",
+    "bubleify": "^0.7.0",
+    "crypto": "^1.0.1",
+    "express": "^4.15.4",
+    "express-session": "^1.15.5",
+    "express-validator": "^4.1.1",
+    "gdax": "^0.4.2",
+    "mustache-express": "^1.2.5",
+    "socket.io": "^2.0.3",
+    "watchify": "^3.9.0"
+  }
+}
