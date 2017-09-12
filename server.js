@@ -9,9 +9,12 @@ var Gdax = require('gdax');
 var btcClient = new Gdax.PublicClient();
 var ethClient = new Gdax.PublicClient("ETH-USD");
 var ltcClient = new Gdax.PublicClient("LTC-USD");
-const server = application.listen(8080, function () {
-  console.log('Listening on port: ', 8080);
+application.set('port', process.env.PORT || 3000)
+
+application.listen(application.get('port'), function () {
+    console.log('app starting on port: ', application.get('port'))
 });
+
 
 application.engine('mustache', mustache());
 
