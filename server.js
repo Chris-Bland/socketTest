@@ -9,6 +9,7 @@ var Gdax = require('gdax');
 var btcClient = new Gdax.PublicClient();
 var ethClient = new Gdax.PublicClient("ETH-USD");
 var ltcClient = new Gdax.PublicClient("LTC-USD");
+
 application.set('port', process.env.PORT || 3000)
 
 application.listen(application.get('port'), function () {
