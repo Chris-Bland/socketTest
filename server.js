@@ -43,6 +43,7 @@ io.on('connection', function (socket) {
 
   socket.on('bitcoin', function (data) {
     inputTime = data.btcTime
+    btcPercent = data.btcPercent
     conditionMet = false;
 
     console.log('Bitcoin Socket Recieved');
@@ -69,9 +70,9 @@ io.on('connection', function (socket) {
     function checkConditionMet() {
       getBitcoinInformation();
       console.log("BTC has moved " + (btcPercentChange * 100) + '% in the past ' + data.btcTime + 'minutes');
-      console.log('limit set for: ', (data.btcPercent));
+      console.log('limit set for: ', (btcPercent));
 
-         if ((btcPercentChange * 100) >= data.btcPercent) {
+         if ((btcPercentChange * 100) >= btcPercent) {
            if(conditionMet === true){
              return;
            }else {
