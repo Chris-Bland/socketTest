@@ -12,7 +12,7 @@ var ltcClient = new Gdax.PublicClient("LTC-USD");
 
 application.set('port', process.env.PORT || 3000)
 
-application.listen(application.get('port'), function () {
+const server = application.listen(application.get('port'), function () {
     console.log('app starting on port: ', application.get('port'))
 });
 
@@ -35,6 +35,7 @@ var inputTime = 60;
 
 // ******************************************* Sockets ********************************************
 var io = socket(server);
+console.log('server: ', server);
 var conditionMet = false;
 
 io.on('connection', function (socket) {
