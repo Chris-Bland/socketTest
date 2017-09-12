@@ -9,8 +9,8 @@ var Gdax = require('gdax');
 var btcClient = new Gdax.PublicClient();
 var ethClient = new Gdax.PublicClient("ETH-USD");
 var ltcClient = new Gdax.PublicClient("LTC-USD");
-const server = application.listen(3000, function () {
-  console.log('Listening on port: ', 3000);
+const server = application.listen(8080, function () {
+  console.log('Listening on port: ', 8080);
 });
 
 application.engine('mustache', mustache());
@@ -30,49 +30,59 @@ application.use(session({
 var inputTime = 60;
 
 // ******************************************* Sockets ********************************************
-var conditionMet = false;
 var io = socket(server);
+var conditionMet = false;
 
 io.on('connection', function (socket) {
   console.log("Made socket connection")
 
   socket.on('bitcoin', function (data) {
     inputTime = data.btcTime
+    conditionMet = false;
+
     console.log('Bitcoin Socket Recieved');
 
     function updateBitcoinInformation() {
       console.log('Updating Bitcoin to Realtime')
-      socket.emit('bitcoinUpdate', {
+      btcPercentChange = ((btcTicker.price - openPrice) / btcTicker.price);
+      console.log('btcPercentChange: ', btcPercentChange);
+      if (btcPercentChange < 0) {
+        btcColor = "red"
+      } else {
+        btcColor = "green"
+      };
+
+      io.sockets.emit('bitcoinUpdate', {
         btcTicker: btcTicker,
-        inputTime: inputTime,
+        btcTotalTime: inputTime,
         btcAverage: btcAverage,
         btcPercentChange: btcPercentChange
       })
     }
-    
     setInterval(updateBitcoinInformation, 5000);
 
     function checkConditionMet() {
-      inputTime = data.btcTime
       getBitcoinInformation();
-      console.log("Checking Conditional");
-      if (btcPercentChange >= data.btcPercent) {
-        io.sockets.emit('bitcoin', data);
-        console.log('Condition Met');
-        conditionMet = true;
+      console.log("BTC has moved " + (btcPercentChange * 100) + '% in the past ' + data.btcTime + 'minutes');
+      console.log('limit set for: ', (data.btcPercent));
+
+         if ((btcPercentChange * 100) >= data.btcPercent) {
+           if(conditionMet === true){
+             return;
+           }else {
+           io.sockets.emit('alert', data);
+           conditionMet = true;
+           }
+
+        console.log('Condition Met: BTC moved ' + btcPercentChange + ' % in the past ' + data.btcTime + ' minutes. Limit set at: ' + data.percent + '.');
       }
     }
-
-    if (conditionMet === false) {
-      setInterval(checkConditionMet, 2000);
-    }
+    
+    setInterval(checkConditionMet, 3000);
   })
-
 })
-
 // ******************************************* Sockets ********************************************
 
-// ******************************************* Bitcoin *******************************************
 
 var btcTicker;
 var btcHistoric;
@@ -80,38 +90,36 @@ var btcAverage;
 var btcTotalTime;
 var btcPercentChange;
 var btcColor;
+var openPrice;
 
+getBitcoinInformation();
+
+// ******************************************* API CALLS ******************************************
 function getBitcoinInformation() {
-  btcClient.getProductHistoricRates({ start: "2017-09-07T10:00:00.000Z", granularity: 60 }, function (err, response) {
+
+  btcClient.getProductHistoricRates({ granularity: 30 }, function (err, response) {
     console.log('err', err);
     if (err) {
       console.log(err);
       return;
     } else {
-      console.log('inputTime', inputTime);
+      console.log('Input Time Duration: ', inputTime);
       var btcHistoric = JSON.parse(response.body);
-      let total = 0;
-      for (var i = 0; i < inputTime; i++) {
-        total += (btcHistoric[i][1] + btcHistoric[i][2]) / 2;
-      }
+      console.log('btcHistoric[1]', btcHistoric[1]);
 
-      btcAverage = total / inputTime;
-      let firstCandle = btcHistoric[inputTime];
-      let startingTime = firstCandle[0];
-      let lastCandle = btcHistoric[0];
-      let finishTime = lastCandle[0];
-      btcTotalTime = (finishTime - startingTime) / 60;
-
-      let openPrice = (firstCandle[1] + firstCandle[2]) / 2;
-      let closePrice = (lastCandle[1] + lastCandle[2]) / 2;
-
-      btcPercentChange = ((closePrice - openPrice) / closePrice) * 100;
-      if (btcPercentChange < 0) {
-        btcColor = "red"
+      if (btcHistoric[0] === undefined) {
+        console.log('API Limit Reached.');
+        return;
       } else {
-        btcColor = "green"
-      };
-      console.log('Recieved BTC packet');
+        let total = 0;
+        for (var i = 0; i < (inputTime * 2); i++) {
+          total += (btcHistoric[i][1] + btcHistoric[i][2]) / 2;
+        }
+        btcAverage = total / (inputTime * 2);
+        let firstCandle = btcHistoric[(inputTime * 2) - 1];
+        openPrice = (firstCandle[1] + firstCandle[2]) / 2;
+        console.log('Recieved BTC Historic');
+      }
     }
   });
 
@@ -121,24 +129,40 @@ function getBitcoinInformation() {
       return;
     }
     btcTicker = data;
+    console.log('Recieved BTC Ticker');
   });
 };
-// ******************************************* Bitcoin *******************************************
+// ******************************************* API CALLS ******************************************
 
-getBitcoinInformation();
+
+// ******************************************* React ******************************************
+application.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
+// ******************************************* React ******************************************
+
 // ******************************************* Routes ********************************************
-application.get('/', async function (request, response) {
+application.get('/', function (request, response) {
   getBitcoinInformation();
-  var model = await {
+  btcPercentChange = ((btcTicker.price - openPrice) / btcTicker.price);
+  console.log('btcprcentChange: ', btcPercentChange);
+  if (btcPercentChange < 0) {
+    btcColor = "red"
+  } else {
+    btcColor = "green"
+  };
+
+  var model = {
     btcTicker: btcTicker,
     btcAverage: btcAverage.toFixed(2),
-    btcTotalTime: btcTotalTime,
+    btcTotalTime: inputTime,
     btcPercentChange: btcPercentChange.toFixed(2),
     btcColor: btcColor,
   }
-  response.render("index", model);
+  response.json({ model });
 });
-
 // ******************************************* Routes ********************************************
 
 
