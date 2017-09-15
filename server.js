@@ -10,7 +10,7 @@ var btcClient = new Gdax.PublicClient();
 var ethClient = new Gdax.PublicClient("ETH-USD");
 var ltcClient = new Gdax.PublicClient("LTC-USD");
 
-application.set('port', process.env.PORT || 3000)
+application.set('port', process.env.PORT || 8081)
 
 const server = application.listen(application.get('port'), function () {
     console.log('app starting on port: ', application.get('port'))
@@ -111,8 +111,6 @@ function getBitcoinInformation() {
     } else {
       console.log('Input Time Duration: ', inputTime);
       var btcHistoric = JSON.parse(response.body);
-      console.log('btcHistoric[1]', btcHistoric[1]);
-
       if (btcHistoric[0] === undefined) {
         console.log('API Limit Reached.');
         return;
@@ -163,13 +161,10 @@ application.get('/', function (request, response) {
   var model = {
     btcTicker: btcTicker,
     btcAverage: btcAverage.toFixed(2),
-    btcTotalTime: inputTime,
     btcPercentChange: btcPercentChange.toFixed(2),
     btcColor: btcColor,
   }
+  console.log('model:', model);
   response.json({ model });
 });
 // ******************************************* Routes ********************************************
-
-
-
