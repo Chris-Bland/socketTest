@@ -31,100 +31,28 @@ application.use(session({
   resave: false,
 }));
 
-var inputTime = 60;
-
-// ******************************************* Sockets ********************************************
-var io = socket(server);
-console.log('server: ', server);
-var conditionMet = false;
-
-io.on('connection', function (socket) {
-  console.log("Made socket connection")
-
-  socket.on('bitcoin', function (data) {
-    inputTime = data.btcTime
-    btcPercent = data.btcPercent
-    conditionMet = false;
-
-    console.log('Bitcoin Socket Recieved');
-
-    function updateBitcoinInformation() {
-      console.log('Updating Bitcoin to Realtime')
-      btcPercentChange = ((btcTicker.price - openPrice) / btcTicker.price);
-      console.log('btcPercentChange: ', btcPercentChange);
-      if (btcPercentChange < 0) {
-        btcColor = "red"
-      } else {
-        btcColor = "green"
-      };
-
-      io.sockets.emit('bitcoinUpdate', {
-        btcTicker: btcTicker,
-        btcTotalTime: inputTime,
-        btcAverage: btcAverage,
-        btcPercentChange: btcPercentChange
-      })
-    }
-    setInterval(updateBitcoinInformation, 5000);
-
-    function checkConditionMet() {
-      getBitcoinInformation();
-      console.log("BTC has moved " + (btcPercentChange * 100) + '% in the past ' + data.btcTime + 'minutes');
-      console.log('limit set for: ', (btcPercent));
-
-         if ((btcPercentChange * 100) >= btcPercent) {
-           if(conditionMet === true){
-             return;
-           }else {
-           io.sockets.emit('alert', data);
-           conditionMet = true;
-           }
-
-        console.log('Condition Met: BTC moved ' + btcPercentChange + ' % in the past ' + data.btcTime + ' minutes. Limit set at: ' + data.percent + '.');
-      }
-    }
-    
-    setInterval(checkConditionMet, 3000);
-  })
-})
-// ******************************************* Sockets ********************************************
-
-
 var btcTicker;
 var btcHistoric;
-var btcAverage;
-var btcTotalTime;
-var btcPercentChange;
-var btcColor;
-var openPrice;
-
-getBitcoinInformation();
+var btcData;
 
 // ******************************************* API CALLS ******************************************
 function getBitcoinInformation() {
 
-  btcClient.getProductHistoricRates({ granularity: 30 }, function (err, response) {
+  btcClient.getProductHistoricRates({ granularity: 60 }, function (err, response) {
     console.log('err', err);
     if (err) {
       console.log(err);
       return;
     } else {
-      console.log('Input Time Duration: ', inputTime);
-      var btcHistoric = JSON.parse(response.body);
+     var btcHistoric = JSON.parse(response.body);
       if (btcHistoric[0] === undefined) {
         console.log('API Limit Reached.');
         return;
       } else {
-        let total = 0;
-        for (var i = 0; i < (inputTime * 2); i++) {
-          total += (btcHistoric[i][1] + btcHistoric[i][2]) / 2;
-        }
-        btcAverage = total / (inputTime * 2);
-        let firstCandle = btcHistoric[(inputTime * 2) - 1];
-        openPrice = (firstCandle[1] + firstCandle[2]) / 2;
-        console.log('Recieved BTC Historic');
-      }
+        btcData = btcHistoric;
+        console.log('Recieved BTC Historic Data');
     }
+  }
   });
 
   btcClient.getProductTicker(function (err, response, data) {
@@ -150,21 +78,10 @@ application.use(function (req, res, next) {
 // ******************************************* Routes ********************************************
 application.get('/', function (request, response) {
   getBitcoinInformation();
-  btcPercentChange = ((btcTicker.price - openPrice) / btcTicker.price);
-  console.log('btcprcentChange: ', btcPercentChange);
-  if (btcPercentChange < 0) {
-    btcColor = "red"
-  } else {
-    btcColor = "green"
-  };
-
   var model = {
     btcTicker: btcTicker,
-    btcAverage: btcAverage.toFixed(2),
-    btcPercentChange: btcPercentChange.toFixed(2),
-    btcColor: btcColor,
+    btcData: btcData
   }
-  console.log('model:', model);
   response.json({ model });
 });
 // ******************************************* Routes ********************************************
